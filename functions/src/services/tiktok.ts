@@ -44,7 +44,8 @@ export async function fetchVideoMetadata(url: string): Promise<TikTokVideo> {
   const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
   const res = await request(url, {
     headers: { "user-agent": ua, accept: "text/html" },
-    bodyTimeout: env.cacheTtlSeconds
+    bodyTimeout: limits.apiTimeoutMs,
+    headersTimeout: limits.apiTimeoutMs
   });
   const html = await res.body.text();
   const title = html.match(/<title>(.*?)<\/title>/i)?.[1]?.replace(/\s+\| TikTok.*/, "") || "TikTok video";

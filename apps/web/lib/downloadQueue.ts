@@ -48,7 +48,9 @@ export class BrowserDownloadQueue {
         currentIndex: number;
       };
       this.queueId = parsed.queueId;
-      this.items = parsed.items || [];
+      this.items = (parsed.items || []).map((item) =>
+        item.status === "downloading" || item.status === "retrying" ? { ...item, status: "paused", updatedAt: Date.now() } : item
+      );
       this.running = false;
       this.paused = parsed.paused ?? true;
       this.currentIndex = parsed.currentIndex || 0;
@@ -87,11 +89,15 @@ export class BrowserDownloadQueue {
   }
 
   resume() {
-    if (!this.running) return;
+    if (!this.queueId || !this.items.length) return;
+    const wasRunning = this.running;
     this.paused = false;
+    this.cancelled = false;
+    this.items = this.items.map((item) => (item.status === "paused" || item.status === "network_waiting" ? { ...item, status: "waiting", updatedAt: Date.now() } : item));
+    if (!this.running) this.running = true;
     this.persist();
     this.emit();
-    void this.run();
+    if (!wasRunning) void this.run();
   }
 
   cancel() {
@@ -161,6 +167,7 @@ export class BrowserDownloadQueue {
             ...this.items[index],
             status: "failed",
             retries: attempt,
+            updatedAt: Date.now(),
             error: error instanceof Error ? error.message : "Download failed"
           };
           await api.queueEvent(this.queueId, { type: "failed", videoId: this.items[index].id, retries: attempt });

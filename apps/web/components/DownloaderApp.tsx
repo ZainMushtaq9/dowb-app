@@ -53,7 +53,12 @@ export function DownloaderApp() {
           const result = await api.profile(url, nextCursor, abortRef.current?.signal);
           setVideos((current) => {
             const merged = nextCursor ? [...current, ...result.videos] : result.videos;
-            setSelected(new Set(merged.map((video) => video.id)));
+            setSelected((previous) => {
+              if (!nextCursor) return new Set(merged.map((video) => video.id));
+              const next = new Set(previous);
+              for (const video of result.videos) next.add(video.id);
+              return next;
+            });
             return merged;
           });
           setCursor(result.nextCursor);

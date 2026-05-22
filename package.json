@@ -1,0 +1,24 @@
+{
+  "name": "tiktok-downloader-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "High-traffic TikTok downloader platform with Next.js, Flutter and Firebase Functions.",
+  "workspaces": [
+    "apps/web",
+    "functions",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "lint:web": "npm --workspace apps/web run lint",
+    "build:functions": "npm --workspace functions run build",
+    "serve:functions": "npm --workspace functions run serve",
+    "test:functions": "npm --workspace functions run test",
+    "build:shared": "npm --workspace packages/shared run build",
+    "build": "npm run build:shared && npm run build:web && npm run build:functions"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

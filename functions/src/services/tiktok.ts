@@ -110,25 +110,46 @@ export async function fetchProfileVideos(url: string, cursor?: string, limit: nu
       await page.waitForTimeout(750);
     }
 
-    const links = await page
+    const profileItems = await page
       .locator('a[href*="/video/"]')
-      .evaluateAll((nodes) => Array.from(new Set(nodes.map((node) => (node as HTMLAnchorElement).href))));
+      .evaluateAll((nodes) => {
+        const seen = new Set<string>();
+        return nodes.flatMap((node) => {
+          const anchor = node as HTMLAnchorElement;
+          if (!anchor.href || seen.has(anchor.href)) return [];
+          seen.add(anchor.href);
+          const img =
+            anchor.querySelector("img") ||
+            anchor.parentElement?.querySelector("img") ||
+            anchor.closest("div")?.querySelector("img");
+          const image = img as HTMLImageElement | null;
+          const thumbnailUrl =
+            image?.currentSrc ||
+            image?.src ||
+            image?.getAttribute("data-src") ||
+            image?.getAttribute("srcset")?.split(" ")?.[0] ||
+            "";
+          const label = anchor.getAttribute("aria-label") || anchor.textContent?.trim() || "";
+          return [{ url: anchor.href, thumbnailUrl, label }];
+        });
+      });
     const offset = Number(cursor || 0);
-    const slice = links.slice(offset, offset + limit);
-    const videos = slice.map((videoUrl) => {
+    const slice = profileItems.slice(offset, offset + limit);
+    const videos = slice.map((item) => {
+      const videoUrl = item.url;
       const id = videoUrl.match(/\/video\/(\d+)/)?.[1] || crypto.randomUUID();
       return {
         id,
         url: videoUrl,
-        title: `@${username} video ${id}`,
+        title: item.label || `@${username} video ${id}`,
         username,
-        thumbnailUrl: ""
+        thumbnailUrl: item.thumbnailUrl
       };
     });
     const result = {
       videos,
-      nextCursor: offset + videos.length < links.length && offset + videos.length < env.maxProfileVideos ? String(offset + videos.length) : undefined,
-      hasMore: offset + videos.length < links.length && offset + videos.length < env.maxProfileVideos
+      nextCursor: offset + videos.length < profileItems.length && offset + videos.length < env.maxProfileVideos ? String(offset + videos.length) : undefined,
+      hasMore: offset + videos.length < profileItems.length && offset + videos.length < env.maxProfileVideos
     };
     await setCached(cacheKey, result, env.cacheTtlSeconds);
     return result;

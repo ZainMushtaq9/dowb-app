@@ -35,6 +35,11 @@ export function DownloaderApp() {
 
   const selectedVideos = useMemo(() => videos.filter((video) => selected.has(video.id)), [videos, selected]);
 
+  function detectMode(value: string): Mode | null {
+    if (!value.includes("tiktok.com")) return null;
+    return /\/video\/\d+/.test(value) ? "video" : "profile";
+  }
+
   async function submit(nextCursor?: string) {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -43,10 +48,13 @@ export function DownloaderApp() {
       setMessage("Paste a valid public TikTok URL.");
       return;
     }
+    const detectedMode = detectMode(url);
+    if (!nextCursor && detectedMode && detectedMode !== mode) setMode(detectedMode);
+    const requestMode = nextCursor ? mode : detectedMode || mode;
 
     startTransition(async () => {
       try {
-        if (mode === "video") {
+        if (requestMode === "video") {
           const result = await api.video(url, abortRef.current?.signal);
           setSingle(result.video);
         } else {
@@ -72,7 +80,16 @@ export function DownloaderApp() {
 
   async function startQueue() {
     setMessage("");
-    await queueRef.current?.start(selectedVideos);
+    if (!selectedVideos.length) {
+      setMessage("Select at least one video to start the download queue.");
+      return;
+    }
+    setMessage(`Download queue started for ${selectedVideos.length} videos.`);
+    try {
+      await queueRef.current?.start(selectedVideos);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to start the download queue.");
+    }
   }
 
   return (
@@ -130,6 +147,8 @@ export function DownloaderApp() {
         <AdSlot slot="1234567890" />
 
         {mode === "video" && single ? <SingleVideo video={single} /> : null}
+        {queueSnapshot.items.length ? <QueuePanel snapshot={queueSnapshot} queue={queueRef.current} /> : null}
+
         {mode === "profile" && videos.length ? (
           <ProfileGrid
             videos={videos}
@@ -139,10 +158,9 @@ export function DownloaderApp() {
             onLoadMore={() => cursor && submit(cursor)}
             hasMore={hasMore}
             onStartQueue={startQueue}
+            queueRunning={queueSnapshot.running}
           />
         ) : null}
-
-        {queueSnapshot.items.length ? <QueuePanel snapshot={queueSnapshot} queue={queueRef.current} /> : null}
       </section>
     </main>
   );
@@ -152,7 +170,7 @@ function SingleVideo({ video }: { video: VideoItem }) {
   return (
     <section className="grid gap-4 rounded-lg border border-black/10 bg-white p-4 shadow-soft dark:border-white/10 dark:bg-white/5 sm:grid-cols-[160px_1fr]">
       <div className="aspect-[9/12] overflow-hidden rounded bg-black/10">
-        {video.thumbnailUrl ? <img alt="" src={video.thumbnailUrl} loading="lazy" className="h-full w-full object-cover" /> : null}
+        <img alt="" src={video.thumbnailUrl || "/video-thumbnail.svg"} loading="lazy" className="h-full w-full object-cover" />
       </div>
       <div className="min-w-0">
         <h2 className="text-xl font-semibold">{video.title}</h2>
@@ -181,7 +199,8 @@ function ProfileGrid({
   selectedCount,
   onLoadMore,
   hasMore,
-  onStartQueue
+  onStartQueue,
+  queueRunning
 }: {
   videos: VideoItem[];
   selected: Set<string>;
@@ -190,6 +209,7 @@ function ProfileGrid({
   onLoadMore: () => void;
   hasMore: boolean;
   onStartQueue: () => void;
+  queueRunning: boolean;
 }) {
   const width = typeof window === "undefined" ? 360 : Math.min(window.innerWidth - 32, 1120);
   const columns = Math.max(2, Math.floor(width / 170));
@@ -212,8 +232,13 @@ function ProfileGrid({
               Load More
             </button>
           ) : null}
-          <button onClick={onStartQueue} className="h-10 rounded bg-coral px-3 text-sm font-semibold text-white">
-            Download Selected
+          <button
+            type="button"
+            onClick={onStartQueue}
+            disabled={!selectedCount || queueRunning}
+            className="relative z-10 h-12 cursor-pointer rounded bg-coral px-4 text-sm font-semibold text-white shadow-soft hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {queueRunning ? "Queue Running" : "Download Selected"}
           </button>
         </div>
       </div>
@@ -225,7 +250,7 @@ function ProfileGrid({
             <div style={style} className="p-1.5">
               <label className="block h-full rounded border border-black/10 p-2 dark:border-white/10">
                 <div className="aspect-[9/11] overflow-hidden rounded bg-black/10">
-                  {video.thumbnailUrl ? <img src={video.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
+                  <img src={video.thumbnailUrl || "/video-thumbnail.svg"} alt="" loading="lazy" className="h-full w-full object-cover" />
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <input

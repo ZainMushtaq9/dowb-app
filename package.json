@@ -20,9 +20,12 @@
     "build": "npm run build:shared && npm run build:web && npm run build:functions"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": "20.x"
   },
   "dependencies": {
     "cssesc": "^3.0.0"
+  },
+  "devDependencies": {
+    "napi-postinstall": "^0.3.4"
   }
 }

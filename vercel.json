@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install",
+  "installCommand": "npm install --include=dev --no-audit --no-fund",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next",
+  "outputDirectory": "apps/web/out",
   "headers": [
     {
       "source": "/manifest.webmanifest",

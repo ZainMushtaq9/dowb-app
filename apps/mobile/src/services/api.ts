@@ -1,6 +1,10 @@
 import Constants from "expo-constants";
 
-const apiBaseUrl = (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) || "http://localhost:5001/api";
+let apiBaseUrl = (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) || "http://localhost:5001/api";
+
+export function setApiBaseUrl(nextUrl?: string) {
+  if (nextUrl) apiBaseUrl = nextUrl.replace(/\/$/, "");
+}
 
 export interface VideoItem {
   id: string;

@@ -50,3 +50,5 @@ eas build --platform android
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Runtime API, AdSense, and AdMob values can be changed without code changes. See [docs/RUNTIME_CONFIG.md](docs/RUNTIME_CONFIG.md).

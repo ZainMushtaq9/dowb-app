@@ -47,8 +47,14 @@ export class BrowserDownloadQueue {
         paused: boolean;
         currentIndex: number;
       };
+      const items = parsed.items || [];
+      const hasUnfinishedItems = items.some((item) => !["completed", "cancelled", "skipped"].includes(item.status));
+      if (!hasUnfinishedItems || (!parsed.running && !parsed.paused)) {
+        localStorage.removeItem("downloadQueue");
+        return;
+      }
       this.queueId = parsed.queueId;
-      this.items = (parsed.items || []).map((item) =>
+      this.items = items.map((item) =>
         item.status === "downloading" || item.status === "retrying" ? { ...item, status: "paused", updatedAt: Date.now() } : item
       );
       this.running = false;
@@ -138,6 +144,9 @@ export class BrowserDownloadQueue {
     this.running = false;
     this.persist();
     this.emit();
+    if (this.items.every((item) => ["completed", "cancelled", "skipped"].includes(item.status))) {
+      localStorage.removeItem("downloadQueue");
+    }
   }
 
   private async downloadWithRetry(index: number) {

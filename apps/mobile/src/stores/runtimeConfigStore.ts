@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api } from "@/services/api";
+import { api, setApiBaseUrl } from "@/services/api";
 
 interface RuntimeConfigState {
   ads: Record<string, unknown>;
@@ -12,6 +12,9 @@ export const useRuntimeConfigStore = create<RuntimeConfigState>((set) => ({
   features: {},
   hydrate: async () => {
     const config = await api.config().catch(() => null);
-    if (config) set({ ads: config.ads, features: config.features });
+    if (config) {
+      setApiBaseUrl(config.features?.api_base_url as string | undefined);
+      set({ ads: config.ads, features: config.features });
+    }
   }
 }));

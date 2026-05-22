@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, SafeAreaView, Text, TextInput, View } from "react-native";
+import { AdBanner } from "@/components/AdBanner";
 import { useDownloadQueueStore } from "@/stores/downloadQueueStore";
 
 export default function DownloadScreen() {
@@ -37,6 +38,7 @@ export default function DownloadScreen() {
         <Text style={{ color: "#333" }}>
           Downloading {Math.min(completed + (active ? 1 : 0), items.length)} of {items.length}
         </Text>
+        <AdBanner />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <QueueButton label="Pause" onPress={pause} />
           <QueueButton label="Resume" onPress={() => resume().then(process)} />

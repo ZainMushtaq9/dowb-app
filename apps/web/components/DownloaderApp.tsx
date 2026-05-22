@@ -211,13 +211,29 @@ function ProfileGrid({
   onStartQueue: () => void;
   queueRunning: boolean;
 }) {
-  const width = typeof window === "undefined" ? 360 : Math.min(window.innerWidth - 32, 1120);
-  const columns = Math.max(2, Math.floor(width / 170));
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(360);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const resize = () => {
+      const next = Math.max(280, Math.floor(containerRef.current?.clientWidth || 360));
+      setWidth(next);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const columns = width < 430 ? 1 : width < 700 ? 2 : Math.max(3, Math.floor(width / 180));
   const rows = Math.ceil(videos.length / columns);
+  const columnWidth = Math.floor(width / columns);
+  const rowHeight = width < 430 ? 304 : 252;
 
   return (
-    <section className="rounded-lg border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <section className="overflow-hidden rounded-lg border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/5">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input
             type="checkbox"
@@ -226,9 +242,9 @@ function ProfileGrid({
           />
           Select All ({selectedCount}/{videos.length})
         </label>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           {hasMore ? (
-            <button onClick={onLoadMore} className="h-10 rounded border border-black/10 px-3 text-sm dark:border-white/15">
+            <button onClick={onLoadMore} className="h-11 rounded border border-black/10 px-3 text-sm dark:border-white/15">
               Load More
             </button>
           ) : null}
@@ -236,40 +252,42 @@ function ProfileGrid({
             type="button"
             onClick={onStartQueue}
             disabled={!selectedCount || queueRunning}
-            className="relative z-10 h-12 cursor-pointer rounded bg-coral px-4 text-sm font-semibold text-white shadow-soft hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="relative z-10 h-12 w-full cursor-pointer rounded bg-coral px-4 text-sm font-semibold text-white shadow-soft hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {queueRunning ? "Queue Running" : "Download Selected"}
           </button>
         </div>
       </div>
-      <Grid columnCount={columns} columnWidth={width / columns} height={620} rowCount={rows} rowHeight={236} width={width}>
-        {({ columnIndex, rowIndex, style }) => {
-          const video = videos[rowIndex * columns + columnIndex];
-          if (!video) return null;
-          return (
-            <div style={style} className="p-1.5">
-              <label className="block h-full rounded border border-black/10 p-2 dark:border-white/10">
-                <div className="aspect-[9/11] overflow-hidden rounded bg-black/10">
-                  <img src={video.thumbnailUrl || "/video-thumbnail.svg"} alt="" loading="lazy" className="h-full w-full object-cover" />
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(video.id)}
-                    onChange={(event) => {
-                      const next = new Set(selected);
-                      if (event.target.checked) next.add(video.id);
-                      else next.delete(video.id);
-                      setSelected(next);
-                    }}
-                  />
-                  <span className="truncate text-xs">{video.title}</span>
-                </div>
-              </label>
-            </div>
-          );
-        }}
-      </Grid>
+      <div ref={containerRef} className="w-full overflow-hidden">
+        <Grid columnCount={columns} columnWidth={columnWidth} height={620} rowCount={rows} rowHeight={rowHeight} width={width}>
+          {({ columnIndex, rowIndex, style }) => {
+            const video = videos[rowIndex * columns + columnIndex];
+            if (!video) return null;
+            return (
+              <div style={style} className="p-1.5">
+                <label className="block h-full rounded border border-black/10 p-2 dark:border-white/10">
+                  <div className="aspect-[9/11] overflow-hidden rounded bg-black/10">
+                    <img src={video.thumbnailUrl || "/video-thumbnail.svg"} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(video.id)}
+                      onChange={(event) => {
+                        const next = new Set(selected);
+                        if (event.target.checked) next.add(video.id);
+                        else next.delete(video.id);
+                        setSelected(next);
+                      }}
+                    />
+                    <span className="truncate text-xs">{video.title}</span>
+                  </div>
+                </label>
+              </div>
+            );
+          }}
+        </Grid>
+      </div>
     </section>
   );
 }

@@ -94,6 +94,20 @@ export class BrowserDownloadQueue {
     this.emit();
   }
 
+  pauseItem(id: string) {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) return;
+    const item = this.items[index];
+    if (!["waiting", "downloading", "retrying", "network_waiting"].includes(item.status)) return;
+    this.items[index] = { ...item, status: "paused", updatedAt: Date.now() };
+    if (index === this.currentIndex) {
+      this.paused = true;
+      this.running = false;
+    }
+    this.persist();
+    this.emit();
+  }
+
   resume() {
     if (!this.queueId || !this.items.length) return;
     const wasRunning = this.running;
@@ -104,6 +118,23 @@ export class BrowserDownloadQueue {
     this.persist();
     this.emit();
     if (!wasRunning) void this.run();
+  }
+
+  resumeItem(id: string) {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) return;
+    const item = this.items[index];
+    if (item.status !== "paused" && item.status !== "network_waiting") return;
+    this.items[index] = { ...item, status: "waiting", updatedAt: Date.now(), error: undefined };
+    this.currentIndex = Math.min(this.currentIndex, index);
+    this.paused = false;
+    this.cancelled = false;
+    if (!this.running) {
+      this.running = true;
+      void this.run();
+    }
+    this.persist();
+    this.emit();
   }
 
   cancel() {
@@ -130,6 +161,37 @@ export class BrowserDownloadQueue {
     void this.run();
   }
 
+  retryItem(id: string) {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) return;
+    const item = this.items[index];
+    this.items[index] = { ...item, status: "waiting", retries: 0, progress: 0, error: undefined, updatedAt: Date.now() };
+    this.currentIndex = Math.min(this.currentIndex, index);
+    this.paused = false;
+    this.cancelled = false;
+    if (!this.running) {
+      this.running = true;
+      void this.run();
+    }
+    this.persist();
+    this.emit();
+  }
+
+  skipItem(id: string) {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) return;
+    const item = this.items[index];
+    if (item.status === "completed") return;
+    this.items[index] = { ...item, status: "skipped", updatedAt: Date.now() };
+    if (index === this.currentIndex) {
+      this.paused = false;
+      this.running = false;
+      void this.run();
+    }
+    this.persist();
+    this.emit();
+  }
+
   private async run() {
     if (!this.queueId) return;
     for (let index = this.currentIndex; index < this.items.length; index += 1) {
@@ -138,6 +200,7 @@ export class BrowserDownloadQueue {
       this.currentIndex = index;
       const item = this.items[index];
       if (!item || item.status === "completed" || item.status === "skipped" || item.status === "cancelled") continue;
+      if (item.status === "paused") break;
       await this.downloadWithRetry(index);
       if (index < this.items.length - 1) await delay(randomDelay());
     }

@@ -325,25 +325,53 @@ function QueuePanel({ snapshot, queue }: { snapshot: QueueSnapshot; queue: Brows
       </div>
       <div className="mt-3 max-h-72 overflow-auto rounded border border-black/10 dark:border-white/10">
         {snapshot.items.map((item, index) => (
-          <div key={item.id} className="grid grid-cols-[28px_1fr_auto] items-center gap-2 border-b border-black/5 px-3 py-2 text-sm last:border-b-0 dark:border-white/10">
-            <span>
-              {item.status === "completed"
-                ? "OK"
-                : item.status === "downloading"
-                  ? `${item.progress || 0}%`
-                  : item.status === "retrying"
-                    ? "RETRY"
-                    : item.status === "network_waiting"
-                      ? "NET"
-                      : item.status === "failed"
-                        ? "ERR"
-                        : "WAIT"}
-            </span>
-            <span className="truncate">{item.title}</span>
-            <span className="text-xs text-black/50 dark:text-white/50">{index + 1}</span>
+          <div
+            key={item.id}
+            className="grid grid-cols-[56px_minmax(0,1fr)] gap-2 border-b border-black/5 px-3 py-2 text-sm last:border-b-0 dark:border-white/10 sm:grid-cols-[64px_minmax(0,1fr)_auto]"
+          >
+            <span className="self-center font-semibold text-black/70 dark:text-white/70">{queueLabel(item.status, item.progress)}</span>
+            <div className="min-w-0 self-center">
+              <div className="truncate">{item.title}</div>
+              {item.error ? <div className="truncate text-xs text-coral">{item.error}</div> : null}
+            </div>
+            <div className="col-span-2 flex flex-wrap items-center gap-1 sm:col-span-1 sm:justify-end">
+              {item.status === "downloading" || item.status === "retrying" || item.status === "waiting" || item.status === "network_waiting" ? (
+                <button onClick={() => queue?.pauseItem(item.id)} className="h-8 rounded border border-black/10 px-2 text-xs dark:border-white/15">
+                  Pause
+                </button>
+              ) : null}
+              {item.status === "paused" || item.status === "network_waiting" ? (
+                <button onClick={() => queue?.resumeItem(item.id)} className="h-8 rounded border border-black/10 px-2 text-xs dark:border-white/15">
+                  Resume
+                </button>
+              ) : null}
+              {item.status === "failed" || item.status === "cancelled" || item.status === "skipped" ? (
+                <button onClick={() => queue?.retryItem(item.id)} className="h-8 rounded bg-ink px-2 text-xs text-white dark:bg-paper dark:text-ink">
+                  Retry
+                </button>
+              ) : null}
+              {item.status !== "completed" && item.status !== "skipped" ? (
+                <button onClick={() => queue?.skipItem(item.id)} className="h-8 rounded border border-black/10 px-2 text-xs dark:border-white/15">
+                  Skip
+                </button>
+              ) : null}
+              <span className="ml-auto min-w-5 text-right text-xs text-black/50 dark:text-white/50 sm:ml-1">{index + 1}</span>
+            </div>
           </div>
         ))}
       </div>
     </section>
   );
+}
+
+function queueLabel(status: string, progress: number) {
+  if (status === "completed") return "OK";
+  if (status === "downloading") return `${progress || 0}%`;
+  if (status === "retrying") return "RETRY";
+  if (status === "network_waiting") return "NET";
+  if (status === "failed") return "ERR";
+  if (status === "paused") return "PAUSE";
+  if (status === "cancelled") return "CANCEL";
+  if (status === "skipped") return "SKIP";
+  return "WAIT";
 }

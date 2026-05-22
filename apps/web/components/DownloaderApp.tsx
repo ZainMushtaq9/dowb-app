@@ -97,9 +97,9 @@ export function DownloaderApp() {
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <img src="/website-logo.png" alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+            <img src="/website-logo.png" alt="" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20" />
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-normal sm:text-4xl">TikTok Downloader</h1>
+              <h1 className="text-3xl font-semibold tracking-normal sm:text-5xl">TikTok Downloader</h1>
               <p className="mt-1 max-w-2xl text-sm text-black/65 dark:text-white/65">
                 Fast public video and profile downloads with sequential queue downloading.
               </p>

@@ -4,7 +4,22 @@ export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
-  return ["", "/video-downloader", "/profile-downloader", "/trending", "/blog", "/hashtag-generator", "/caption-generator"].map((path) => ({
+  return [
+    "",
+    "/video-downloader",
+    "/profile-downloader",
+    "/trending",
+    "/blog",
+    "/hashtag-generator",
+    "/caption-generator",
+    "/about",
+    "/contact",
+    "/privacy",
+    "/terms",
+    "/dmca",
+    "/disclaimer",
+    "/site-map"
+  ].map((path) => ({
     url: `${base}${path}`,
     lastModified: new Date(),
     changeFrequency: "weekly",

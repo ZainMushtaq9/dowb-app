@@ -30,7 +30,6 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
     body: JSON.stringify(body),
     signal
   });
-  if (!response.ok && shouldUseLocalFallback(response.status)) return mockPost<T>(path, body);
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     throw new Error(error?.error || `API request failed (${response.status}). Check NEXT_PUBLIC_API_BASE_URL or start the backend.`);
@@ -49,7 +48,6 @@ export const api = {
   config: async () => {
     if (MOCK_API) return mockConfig();
     const response = await fetch(`${API_BASE}/config`, { next: { revalidate: 60 } });
-    if (!response.ok && shouldUseLocalFallback(response.status)) return mockConfig();
     if (!response.ok) throw new Error("Remote config unavailable");
     return response.json() as Promise<PublicRuntimeConfig>;
   },
@@ -73,15 +71,6 @@ export const api = {
     return response.json();
   }
 };
-
-function shouldUseLocalFallback(status: number) {
-  return (
-    status === 404 &&
-    API_BASE === "/api" &&
-    typeof window !== "undefined" &&
-    LOCAL_HOSTS.has(window.location.hostname)
-  );
-}
 
 function mockConfig(): PublicRuntimeConfig {
   return {

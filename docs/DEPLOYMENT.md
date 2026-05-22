@@ -39,8 +39,8 @@ Build settings:
 ```text
 Framework Preset: Next.js
 Build Command: npm run build:shared && npm run build:web
-Output Directory: apps/web/.next
-Install Command: npm install
+Output Directory: apps/web/out
+Install Command: npm install --include=dev --no-audit --no-fund
 ```
 
 Environment variables:
@@ -52,6 +52,24 @@ NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
 Vercel can also read the included `vercel.json`, which sets the build command and static asset cache headers.
+
+## Local Modes
+
+Real backend mode:
+
+```powershell
+.\start-local.bat
+```
+
+This requires `NEXT_PUBLIC_API_BASE_URL` to point to Firebase Functions or an emulator. Real TikTok thumbnails only appear in this mode when the backend scraper can reach TikTok.
+
+Demo/mock mode:
+
+```powershell
+.\start-demo.bat
+```
+
+This uses generated placeholder thumbnails and does not contact TikTok.
 
 ## Firebase Functions
 

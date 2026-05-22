@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AdsScript } from "@/components/AdsScript";
+import { SeoJsonLd } from "@/components/SeoJsonLd";
+import { SiteFooter } from "@/components/SiteFooter";
 import { WebVitals } from "@/components/WebVitals";
 
 export const metadata: Metadata = {
@@ -36,7 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <WebVitals />
         <AdsScript />
+        <SeoJsonLd />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

@@ -12,7 +12,7 @@
 
 ```text
 apps/web            Next.js 16 PWA, AdSense, SEO pages, admin performance dashboard
-apps/mobile         Flutter Android/iOS app, AdMob, Firebase monitoring, persistent queue downloads
+apps/mobile         Expo React Native app, AdMob, Firebase monitoring, persistent SQLite queue downloads
 functions           Firebase Functions API, scraper services, resolver endpoints, metrics and alerts
 packages/shared     Zod API schemas, telemetry contracts, performance limits
 docs                Architecture and deployment runbooks
@@ -24,6 +24,7 @@ docs                Architecture and deployment runbooks
 | --- | --- | --- |
 | `cache` | Short-lived TikTok metadata/profile pages | TTL via `expiresAt` |
 | `downloadQueues` | Client-managed queue sessions and events | TTL via `expiresAt` |
+| `adminConfig` | Central ad and feature config mirrored with Firebase Remote Config | Persistent |
 | `metrics` | API, app, queue, speed, memory, frame metrics | BigQuery export or 7-30 day TTL |
 | `alerts` | Alert audit trail for failures and latency | 30-90 day TTL |
 | `rateLimits` | Per-IP rolling rate counters | TTL via `expiresAt` |
@@ -33,6 +34,7 @@ docs                Architecture and deployment runbooks
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Function health |
+| `GET` | `/config` | Public ad and feature config for web/mobile |
 | `POST` | `/video` | Fetch public video metadata and download options |
 | `POST` | `/profile` | Fetch profile video window for infinite loading |
 | `POST` | `/download-queue` | Create a lightweight client-managed queue session |
@@ -56,13 +58,20 @@ docs                Architecture and deployment runbooks
 - Browser storage keeps queue state and history.
 - Concurrency is fixed to `1` to avoid browser blocking and TikTok throttling.
 
+## Centralized Ads and Feature Control
+
+- Admins update `adminConfig/ads_config`, `adminConfig/feature_config`, or Firebase Remote Config.
+- Functions exposes a cached `/config` endpoint.
+- Web and mobile fetch config at runtime, enabling ad ID changes, emergency ad disable, maintenance mode, downloader switches, queue delays, API endpoint switching, and force updates without redeploying.
+- AdSense auto/banner/in-feed/article slots and AdMob app-open/banner/interstitial/rewarded/native IDs share the same config source.
+
 ## Mobile Download Strategy
 
-- Flutter queue persists in `SharedPreferences`.
-- `Workmanager` resumes queue work in the background on Android.
-- Downloads stream directly to the downloads directory using Dio.
+- Expo queue persists every item in SQLite with URL, filename, state, retry count, progress, file path, timestamps, and last error.
+- Expo Background Fetch/Task Manager resumes queue work in the background where the OS allows it.
+- Downloads stream directly with resumable file APIs and are saved into the gallery/download library.
 - Heavy work is dispatched outside the UI path; scrolling and controls remain responsive.
-- iOS background execution depends on platform entitlements and should use background URL sessions for App Store release hardening.
+- iOS background execution depends on platform entitlements and should use native background URL sessions for App Store release hardening.
 
 ## Performance Controls
 
@@ -74,7 +83,7 @@ docs                Architecture and deployment runbooks
 
 ## Monitoring
 
-- Firebase Crashlytics: Flutter fatal/non-fatal crash capture.
+- Firebase Crashlytics: React Native fatal/non-fatal crash capture.
 - Firebase Performance Monitoring: mobile HTTP traces and startup timing.
 - Firebase Analytics: app navigation and startup events.
 - Google Play Android Vitals: ANR/crash/startup monitoring after Play Console release.

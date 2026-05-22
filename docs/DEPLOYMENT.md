@@ -4,7 +4,7 @@
 
 - Node.js 20.9+
 - Firebase CLI
-- Flutter 3.27+
+- Expo CLI / EAS CLI for mobile releases
 - Android Studio/Xcode for mobile releases
 
 ## Install
@@ -14,11 +14,12 @@ npm install
 npm run build
 ```
 
-For Flutter:
+For Expo:
 
 ```bash
 cd apps/mobile
-flutter pub get
+npm install
+npx expo start
 ```
 
 ## Firebase Setup
@@ -38,7 +39,7 @@ Build settings:
 ```text
 Framework Preset: Next.js
 Build Command: npm run build:shared && npm run build:web
-Output Directory: apps/web/out
+Output Directory: apps/web/.next
 Install Command: npm install
 ```
 
@@ -46,10 +47,11 @@ Environment variables:
 
 ```text
 NEXT_PUBLIC_API_BASE_URL=https://us-central1-your-project.cloudfunctions.net/api
-NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-0000000000000000
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
+
+Vercel can also read the included `vercel.json`, which sets the build command and static asset cache headers.
 
 ## Firebase Functions
 
@@ -70,28 +72,52 @@ ALERT_EMAIL_WEBHOOK_URL
 ADMIN_DASHBOARD_TOKEN
 ```
 
+## Centralized Ads and Feature Flags
+
+Create these Firestore documents:
+
+```text
+adminConfig/ads_config
+adminConfig/feature_config
+```
+
+`ads_config` fields:
+
+```json
+{
+  "adsense_enabled": true,
+  "adsense_client_id": "ca-pub-0000000000000000",
+  "banner_ad_unit": "1234567890",
+  "interstitial_ad_unit": "ca-app-pub-xxx/yyy",
+  "rewarded_ad_unit": "ca-app-pub-xxx/zzz",
+  "native_ad_unit": "ca-app-pub-xxx/native",
+  "app_open_ad_unit": "ca-app-pub-xxx/open",
+  "website_ads_enabled": true,
+  "mobile_ads_enabled": true,
+  "emergency_disable": false,
+  "interstitial_cooldown_seconds": 90,
+  "rewarded_cooldown_seconds": 60
+}
+```
+
+`feature_config` controls maintenance mode, downloader switches, API endpoint switching, queue delay bounds, scraping fallback, and force-update versions. The public apps fetch `/api/config`, so ad IDs and emergency switches change without redeploying Vercel or publishing a mobile update.
+
 ## Mobile
 
-Android size optimization:
-
 ```bash
-flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=https://us-central1-your-project.cloudfunctions.net/api
-flutter build appbundle --release --dart-define=API_BASE_URL=https://us-central1-your-project.cloudfunctions.net/api
+npm install
+npx expo prebuild
+eas build --platform android
+eas build --platform ios
 ```
 
-iOS:
-
-```bash
-flutter build ipa --release --dart-define=API_BASE_URL=https://us-central1-your-project.cloudfunctions.net/api
-```
-
-Configure Firebase apps with FlutterFire, then add AdMob application ids in native Android/iOS manifests.
+Configure Firebase Android/iOS apps, add native config files during prebuild, and replace the test AdMob application ids in `apps/mobile/app.json`. Runtime ad unit IDs come from Firebase config.
 
 ## AdSense and AdMob
 
-- Web AdSense script is injected in `apps/web/app/layout.tsx`.
+- Web AdSense script is injected dynamically by `apps/web/components/AdsScript.tsx`.
 - Ad slots are isolated in `apps/web/components/AdSlot.tsx`.
-- Mobile AdMob SDK is initialized in `apps/mobile/lib/main.dart`.
+- Mobile AdMob SDK uses `react-native-google-mobile-ads`; unit IDs are pulled from `/api/config`.
 - Put interstitial/rewarded/native ads before queue start and between profile grid sections, capped with Remote Config.
 
 ## Operations Checklist

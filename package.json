@@ -2,7 +2,7 @@
   "name": "tiktok-downloader-platform",
   "private": true,
   "version": "1.0.0",
-  "description": "High-traffic TikTok downloader platform with Next.js, Flutter and Firebase Functions.",
+  "description": "High-traffic TikTok downloader platform with Next.js, Expo and Firebase Functions.",
   "workspaces": [
     "apps/web",
     "functions",

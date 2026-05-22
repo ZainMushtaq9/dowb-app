@@ -31,14 +31,14 @@ flutter pub get
 
 ## Web on Vercel
 
-Create a Vercel project from this repository and set the project root to `apps/web`.
+Create a Vercel project from this repository and keep the project root at the repository root so npm workspaces can install `packages/shared`.
 
 Build settings:
 
 ```text
 Framework Preset: Next.js
-Build Command: npm run build
-Output Directory: out
+Build Command: npm run build:shared && npm run build:web
+Output Directory: apps/web/out
 Install Command: npm install
 ```
 

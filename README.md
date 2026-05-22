@@ -11,12 +11,12 @@ Production-ready TikTok downloader platform with:
 
 ## Web Deploy on Vercel
 
-Set Vercel root directory to `apps/web`.
+Set Vercel root directory to the repository root, not `apps/web`, so npm workspaces can install `packages/shared`.
 
 ```text
 Framework Preset: Next.js
-Build Command: npm run build
-Output Directory: out
+Build Command: npm run build:shared && npm run build:web
+Output Directory: apps/web/out
 Install Command: npm install
 ```
 

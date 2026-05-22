@@ -1,10 +1,13 @@
 import { api, VideoItem } from "./api";
 
-export type QueueStatus = "waiting" | "downloading" | "success" | "failed" | "skipped";
+export type QueueStatus = "waiting" | "downloading" | "paused" | "completed" | "failed" | "retrying" | "cancelled" | "network_waiting" | "skipped";
 
 export interface QueueItem extends VideoItem {
   status: QueueStatus;
   retries: number;
+  progress: number;
+  filePath?: string;
+  updatedAt: number;
   error?: string;
 }
 
@@ -19,6 +22,7 @@ type Listener = (snapshot: QueueSnapshot) => void;
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const randomDelay = () => 5000 + Math.floor(Math.random() * 5000);
+const retryDelay = (attempt: number) => Math.min(5 * 60_000, 5000 * 2 ** attempt) + Math.floor(Math.random() * 1500);
 
 export class BrowserDownloadQueue {
   private queueId = "";
@@ -30,6 +34,9 @@ export class BrowserDownloadQueue {
   private listeners = new Set<Listener>();
 
   constructor() {
+    window.addEventListener("online", () => {
+      if (this.items.some((item) => item.status === "network_waiting")) this.resume();
+    });
     const saved = localStorage.getItem("downloadQueue");
     if (!saved) return;
     try {
@@ -53,13 +60,16 @@ export class BrowserDownloadQueue {
   subscribe(listener: Listener) {
     this.listeners.add(listener);
     listener(this.snapshot());
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   async start(videos: VideoItem[]) {
-    const queue = await api.createDownloadQueue(videos);
+    const uniqueVideos = Array.from(new Map(videos.map((video) => [video.url, video])).values());
+    const queue = await api.createDownloadQueue(uniqueVideos);
     this.queueId = queue.queueId;
-    this.items = videos.map((video) => ({ ...video, status: "waiting", retries: 0 }));
+    this.items = uniqueVideos.map((video) => ({ ...video, status: "waiting", retries: 0, progress: 0, updatedAt: Date.now() }));
     this.running = true;
     this.paused = false;
     this.cancelled = false;
@@ -71,6 +81,7 @@ export class BrowserDownloadQueue {
 
   pause() {
     this.paused = true;
+    this.items = this.items.map((item) => (item.status === "downloading" ? { ...item, status: "paused", updatedAt: Date.now() } : item));
     this.persist();
     this.emit();
   }
@@ -87,12 +98,19 @@ export class BrowserDownloadQueue {
     this.cancelled = true;
     this.running = false;
     this.paused = false;
+    this.items = this.items.map((item) =>
+      item.status === "completed" ? item : { ...item, status: "cancelled", updatedAt: Date.now() }
+    );
     this.persist();
     this.emit();
   }
 
   retryFailed() {
-    this.items = this.items.map((item) => (item.status === "failed" ? { ...item, status: "waiting", error: undefined } : item));
+    this.items = this.items.map((item) =>
+      item.status === "failed" || item.status === "network_waiting"
+        ? { ...item, status: "waiting", error: undefined, updatedAt: Date.now() }
+        : item
+    );
     this.running = true;
     this.cancelled = false;
     this.persist();
@@ -107,7 +125,7 @@ export class BrowserDownloadQueue {
       while (this.paused && !this.cancelled) await delay(400);
       this.currentIndex = index;
       const item = this.items[index];
-      if (!item || item.status === "success" || item.status === "skipped") continue;
+      if (!item || item.status === "completed" || item.status === "skipped" || item.status === "cancelled") continue;
       await this.downloadWithRetry(index);
       if (index < this.items.length - 1) await delay(randomDelay());
     }
@@ -117,16 +135,22 @@ export class BrowserDownloadQueue {
   }
 
   private async downloadWithRetry(index: number) {
-    const maxRetries = 3;
+    const maxRetries = 10;
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       try {
-        this.items[index] = { ...this.items[index], status: "downloading", retries: attempt };
+        if (!navigator.onLine) {
+          this.items[index] = { ...this.items[index], status: "network_waiting", retries: attempt, updatedAt: Date.now(), error: "Offline" };
+          this.persist();
+          this.emit();
+          while (!navigator.onLine && !this.cancelled) await delay(1000);
+        }
+        this.items[index] = { ...this.items[index], status: attempt ? "retrying" : "downloading", retries: attempt, updatedAt: Date.now() };
         this.persist();
         this.emit();
         const resolved = await api.resolveQueueItem(this.queueId, this.items[index].url);
         if (!resolved.downloadUrl) throw new Error("No downloadable URL returned");
         this.triggerDownload(resolved.downloadUrl, resolved.filename);
-        this.items[index] = { ...this.items[index], status: "success", retries: attempt };
+        this.items[index] = { ...this.items[index], status: "completed", retries: attempt, progress: 100, filePath: resolved.filename, updatedAt: Date.now() };
         await api.queueEvent(this.queueId, { type: "success", videoId: this.items[index].id, retries: attempt });
         this.persist();
         this.emit();
@@ -144,7 +168,17 @@ export class BrowserDownloadQueue {
           this.emit();
           return;
         }
-        await delay(1000 * 2 ** attempt);
+        this.items[index] = {
+          ...this.items[index],
+          status: navigator.onLine ? "retrying" : "network_waiting",
+          retries: attempt + 1,
+          error: error instanceof Error ? error.message : "Download failed",
+          updatedAt: Date.now()
+        };
+        this.persist();
+        this.emit();
+        await api.queueEvent(this.queueId, { type: "retry", videoId: this.items[index].id, retries: attempt + 1 }).catch(() => undefined);
+        await delay(retryDelay(attempt));
       }
     }
   }

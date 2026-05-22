@@ -16,9 +16,13 @@
     "serve:functions": "npm --workspace functions run serve",
     "test:functions": "npm --workspace functions run test",
     "build:shared": "npm --workspace packages/shared run build",
+    "vercel-build": "npm run build:shared && npm run build:web",
     "build": "npm run build:shared && npm run build:web && npm run build:functions"
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "cssesc": "^3.0.0"
   }
 }

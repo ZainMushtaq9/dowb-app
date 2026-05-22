@@ -245,7 +245,7 @@ function ProfileGrid({
 }
 
 function QueuePanel({ snapshot, queue }: { snapshot: QueueSnapshot; queue: BrowserDownloadQueue | null }) {
-  const complete = snapshot.items.filter((item) => item.status === "success").length;
+  const complete = snapshot.items.filter((item) => item.status === "completed").length;
   const failed = snapshot.items.filter((item) => item.status === "failed").length;
   const active = snapshot.items[snapshot.currentIndex];
 
@@ -278,7 +278,19 @@ function QueuePanel({ snapshot, queue }: { snapshot: QueueSnapshot; queue: Brows
       <div className="mt-3 max-h-72 overflow-auto rounded border border-black/10 dark:border-white/10">
         {snapshot.items.map((item, index) => (
           <div key={item.id} className="grid grid-cols-[28px_1fr_auto] items-center gap-2 border-b border-black/5 px-3 py-2 text-sm last:border-b-0 dark:border-white/10">
-            <span>{item.status === "success" ? "OK" : item.status === "downloading" ? "..." : item.status === "failed" ? "ERR" : "WAIT"}</span>
+            <span>
+              {item.status === "completed"
+                ? "OK"
+                : item.status === "downloading"
+                  ? `${item.progress || 0}%`
+                  : item.status === "retrying"
+                    ? "RETRY"
+                    : item.status === "network_waiting"
+                      ? "NET"
+                      : item.status === "failed"
+                        ? "ERR"
+                        : "WAIT"}
+            </span>
             <span className="truncate">{item.title}</span>
             <span className="text-xs text-black/50 dark:text-white/50">{index + 1}</span>
           </div>

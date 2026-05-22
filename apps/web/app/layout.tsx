@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
+import { AdsScript } from "@/components/AdsScript";
 import { WebVitals } from "@/components/WebVitals";
 
 export const metadata: Metadata = {
@@ -31,20 +31,11 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
         <WebVitals />
-        {adsenseClient ? (
-          <Script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
-        ) : null}
+        <AdsScript />
         {children}
       </body>
     </html>

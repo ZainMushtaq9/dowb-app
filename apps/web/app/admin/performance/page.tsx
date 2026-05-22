@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, AlertTriangle, Clock, DownloadCloud } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -22,12 +23,12 @@ export default function PerformanceDashboard() {
     return () => window.clearInterval(timer);
   }, [token]);
 
-  const cards = data
+  const cards: Array<{ label: string; value: string; Icon: LucideIcon }> = data
     ? [
-        ["API", `${data.averageApiMs || 0}ms`, Activity],
-        ["Startup", `${data.averageStartupMs || 0}ms`, Clock],
-        ["Queue", `${data.activeQueueSize || 0}`, DownloadCloud],
-        ["Failures", `${data.downloadFailures || 0}`, AlertTriangle]
+        { label: "API", value: `${data.averageApiMs || 0}ms`, Icon: Activity },
+        { label: "Startup", value: `${data.averageStartupMs || 0}ms`, Icon: Clock },
+        { label: "Queue", value: `${data.activeQueueSize || 0}`, Icon: DownloadCloud },
+        { label: "Failures", value: `${data.downloadFailures || 0}`, Icon: AlertTriangle }
       ]
     : [];
 
@@ -44,8 +45,8 @@ export default function PerformanceDashboard() {
       </div>
       {error ? <p className="mt-3 text-sm text-coral">{error}</p> : null}
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(([label, value, Icon]) => (
-          <section key={String(label)} className="rounded-lg border border-black/10 bg-white p-4 shadow-soft">
+        {cards.map(({ label, value, Icon }) => (
+          <section key={label} className="rounded-lg border border-black/10 bg-white p-4 shadow-soft">
             <Icon size={18} />
             <p className="mt-3 text-sm text-black/60">{label}</p>
             <p className="text-2xl font-semibold">{value}</p>

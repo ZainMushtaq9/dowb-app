@@ -5,6 +5,7 @@ import { db, FieldValue } from "../config/firebase.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../services/http.js";
 import { aggregateDashboardMetrics, performanceLogger, recordMetric } from "../services/metrics.js";
+import { getPublicRuntimeConfig } from "../services/runtimeConfig.js";
 import { fetchProfileVideos, fetchVideoMetadata } from "../services/tiktok.js";
 
 export const routes = express.Router();
@@ -12,6 +13,16 @@ export const routes = express.Router();
 routes.get("/health", (_req, res) => {
   res.json({ ok: true, service: "tiktok-downloader-api", region: env.taskQueueLocation });
 });
+
+routes.get(
+  "/config",
+  performanceLogger("GET /config"),
+  asyncHandler(async (_req, res) => {
+    const config = await getPublicRuntimeConfig();
+    res.set("cache-control", "public,max-age=60,s-maxage=300,stale-while-revalidate=600");
+    res.json(config);
+  })
+);
 
 routes.post(
   "/video",
@@ -29,7 +40,7 @@ routes.post(
   performanceLogger("POST /profile"),
   asyncHandler(async (req, res) => {
     const input = profileRequestSchema.parse(req.body);
-    const result = await fetchProfileVideos(input.url, input.cursor, input.limit);
+    const result = await fetchProfileVideos(input.url, input.cursor, Number(input.limit));
     res.set("cache-control", "public,max-age=60,s-maxage=300");
     res.json(result);
   })
@@ -59,7 +70,8 @@ routes.post(
   asyncHandler(async (req, res) => {
     const input = videoRequestSchema.parse(req.body);
     const video = await fetchVideoMetadata(input.url);
-    await db.collection("downloadQueues").doc(req.params.queueId).collection("events").add({
+    const queueId = String(req.params.queueId);
+    await db.collection("downloadQueues").doc(queueId).collection("events").add({
       type: "resolved",
       videoId: video.id,
       createdAt: FieldValue.serverTimestamp()
@@ -77,7 +89,8 @@ routes.post(
 routes.post(
   "/download-queue/:queueId/events",
   asyncHandler(async (req, res) => {
-    await db.collection("downloadQueues").doc(req.params.queueId).collection("events").add({
+    const queueId = String(req.params.queueId);
+    await db.collection("downloadQueues").doc(queueId).collection("events").add({
       ...req.body,
       createdAt: FieldValue.serverTimestamp()
     });

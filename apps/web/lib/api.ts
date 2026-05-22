@@ -1,4 +1,4 @@
-import type { MetricPoint } from "@tiktok-downloader/shared";
+import type { AdsConfig, FeatureConfig, MetricPoint } from "@tiktok-downloader/shared";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
 
@@ -11,6 +11,12 @@ export interface VideoItem {
   durationSeconds?: number;
   downloadUrl?: string;
   noWatermarkUrl?: string;
+}
+
+export interface PublicRuntimeConfig {
+  ads: AdsConfig;
+  features: FeatureConfig;
+  updatedAt: string;
 }
 
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
@@ -32,6 +38,11 @@ export const api = {
   resolveQueueItem: (queueId: string, url: string) =>
     post<{ id: string; filename: string; downloadUrl?: string; title: string }>(`/download-queue/${queueId}/resolve`, { url }),
   queueEvent: (queueId: string, event: Record<string, unknown>) => post<void>(`/download-queue/${queueId}/events`, event),
+  config: async () => {
+    const response = await fetch(`${API_BASE}/config`, { next: { revalidate: 60 } });
+    if (!response.ok) throw new Error("Remote config unavailable");
+    return response.json() as Promise<PublicRuntimeConfig>;
+  },
   metric: (point: MetricPoint) =>
     fetch(`${API_BASE}/metrics`, {
       method: "POST",

@@ -79,7 +79,7 @@ export async function fetchVideoMetadata(url: string): Promise<TikTokVideo> {
   return video;
 }
 
-export async function fetchProfileVideos(url: string, cursor?: string, limit = limits.profilePageSize) {
+export async function fetchProfileVideos(url: string, cursor?: string, limit: number = limits.profilePageSize) {
   const { username } = parseTikTokUrl(url);
   if (!username) throw new Error("TikTok profile URL must include @username");
   const cacheKey = `${cacheKeys.profile(username)}:${cursor || "first"}:${limit}`;

@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "TikTok Downloader",
+    "slug": "dowb-app",
+    "scheme": "dowb",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/app-logo.png",
+    "userInterfaceStyle": "automatic",
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["assets/*"],
+    "android": {
+      "package": "com.dowb.app",
+      "permissions": ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-logo.png",
+        "backgroundColor": "#101214"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.dowb.app",
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-updates",
+      "expo-sqlite",
+      "expo-media-library",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "https://us-central1-your-project.cloudfunctions.net/api",
+      "eas": {
+        "projectId": "replace-with-eas-project-id"
+      }
+    }
+  }
+}

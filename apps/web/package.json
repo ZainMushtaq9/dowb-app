@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "npm --prefix ../../packages/shared run build && next build",
     "lint": "next lint"
   },
   "dependencies": {

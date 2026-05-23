@@ -12,7 +12,7 @@
 
 ```text
 apps/web            Next.js 16 PWA, AdSense, SEO pages, admin performance dashboard
-apps/mobile         Expo React Native app, AdMob, Firebase monitoring, persistent SQLite queue downloads
+apps/mobile         Expo React Native app, AdMob, Firebase monitoring, persistent SQLite queue downloads, MMKV queue metadata, FlashList
 functions           Firebase Functions API, scraper services, resolver endpoints, metrics and alerts
 packages/shared     Zod API schemas, telemetry contracts, performance limits
 docs                Architecture and deployment runbooks
@@ -50,6 +50,7 @@ docs                Architecture and deployment runbooks
 - Failed items retry with exponential backoff and can be retried later.
 - Queue state persists locally for recovery after refresh or app restart.
 - Backend resolves one video at a time, so it never stores huge files, builds archives, or holds video buffers.
+- Request deduplication prevents duplicate metadata/profile scraper work when repeated requests arrive together.
 
 ## Web Download Strategy
 
@@ -68,6 +69,8 @@ docs                Architecture and deployment runbooks
 ## Mobile Download Strategy
 
 - Expo queue persists every item in SQLite with URL, filename, state, retry count, progress, file path, timestamps, and last error.
+- MMKV stores queue recovery metadata so startup can detect interrupted work and resume unfinished items quickly.
+- FlashList renders large mobile queue/profile lists with recycled rows and low memory pressure.
 - Expo Background Fetch/Task Manager resumes queue work in the background where the OS allows it.
 - Downloads stream directly with resumable file APIs and are saved into the gallery/download library.
 - Heavy work is dispatched outside the UI path; scrolling and controls remain responsive.
@@ -77,7 +80,8 @@ docs                Architecture and deployment runbooks
 
 - Web profile grid uses `react-window`.
 - Flutter profile grid uses `SliverGrid.builder`, `RepaintBoundary`, and cached network images with memory width caps.
-- Backend scraping uses randomized 5-10 second delays, rotating user agents, cache hits first, request timeouts, and bounded retries.
+- Backend scraping uses cache hits first, request deduplication, randomized 5-10 second delays, rotating user agents, request timeouts, and bounded retries.
+- Extraction is layered: lightweight metadata parsing first, command-line extractor support in local development, and Playwright profile scraping only as fallback.
 - No server archive files and no Cloud Storage temporary video packages.
 - Cloud Functions API uses `minInstances: 1` for cold-start reduction and concurrency for throughput.
 
@@ -88,6 +92,7 @@ docs                Architecture and deployment runbooks
 - Firebase Analytics: app navigation and startup events.
 - Google Play Android Vitals: ANR/crash/startup monitoring after Play Console release.
 - Backend custom metrics: latency, queue delay, download success/failure, retries, scraper blocks.
+- Admin dashboard tracks downloads/day, active users, retry rate, queue health, scraping success rate, ad impressions, memory/render metrics, and top countries when client tags are available.
 - Alerts: Telegram and email webhook through `sendAlert`.
 
 ## Cost Controls

@@ -148,6 +148,17 @@ export class BrowserDownloadQueue {
     this.emit();
   }
 
+  clear() {
+    this.cancelled = true;
+    this.running = false;
+    this.paused = false;
+    this.currentIndex = 0;
+    this.items = [];
+    this.queueId = "";
+    localStorage.removeItem("downloadQueue");
+    this.emit();
+  }
+
   retryFailed() {
     this.items = this.items.map((item) =>
       item.status === "failed" || item.status === "network_waiting"
@@ -242,7 +253,7 @@ export class BrowserDownloadQueue {
             updatedAt: Date.now(),
             error: error instanceof Error ? error.message : "Download failed"
           };
-          await api.queueEvent(this.queueId, { type: "failed", videoId: this.items[index].id, retries: attempt });
+          await api.queueEvent(this.queueId, { type: "failed", videoId: this.items[index].id, retries: attempt }).catch(() => undefined);
           this.persist();
           this.emit();
           return;

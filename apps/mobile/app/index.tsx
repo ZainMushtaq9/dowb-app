@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Pressable, SafeAreaView, Text, TextInput, View } from "react-native";
+import { Pressable, SafeAreaView, Text, TextInput, View } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { AdBanner } from "@/components/AdBanner";
 import { useDownloadQueueStore } from "@/stores/downloadQueueStore";
 
@@ -47,13 +48,10 @@ export default function DownloadScreen() {
           <QueueButton label="Clear Done" onPress={clearCompleted} />
         </View>
       </View>
-      <FlatList
+      <FlashList
         data={items}
         keyExtractor={(item) => item.id}
-        initialNumToRender={12}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews
+        estimatedItemSize={88}
         contentContainerStyle={{ padding: 16, gap: 8 }}
         renderItem={({ item, index }) => (
           <View style={{ minHeight: 64, borderRadius: 8, backgroundColor: "white", padding: 12 }}>

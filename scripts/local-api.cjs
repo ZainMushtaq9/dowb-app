@@ -1,5 +1,5 @@
 const http = require("node:http");
-const { execFile } = require("node:child_process");
+const { execFile, spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
 const { promisify } = require("node:util");
 const { chromium } = require("playwright");
@@ -20,6 +20,11 @@ function parseTikTokUrl(url) {
     username: parsed.pathname.match(/@([^/?]+)/)?.[1],
     videoId: parsed.pathname.match(/\/video\/(\d+)/)?.[1]
   };
+}
+
+function canonicalProfileUrl(url) {
+  const { username } = parseTikTokUrl(url);
+  return username ? `https://www.tiktok.com/@${username}` : url;
 }
 
 function cacheGet(key) {
@@ -49,6 +54,18 @@ function send(res, status, body) {
   res.end(body === undefined ? "" : JSON.stringify(body));
 }
 
+function isDirectVideoUrl(value) {
+  if (!value) return false;
+  if (value.startsWith("data:video/")) return true;
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.replace(/^www\./, "");
+    return host !== "tiktok.com" && !host.endsWith(".tiktok.com");
+  } catch {
+    return false;
+  }
+}
+
 async function openBrowser() {
   try {
     return await chromium.launch({ channel: "msedge", headless: true });
@@ -65,7 +82,8 @@ async function scrapeProfile(url, cursor, limit) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
-  const fromYtDlp = await scrapeProfileWithYtDlp(url, offset, limit).catch(() => null);
+  const profileUrl = canonicalProfileUrl(url);
+  const fromYtDlp = await scrapeProfileWithYtDlp(profileUrl, offset, limit).catch(() => null);
   if (fromYtDlp?.videos?.length) {
     cacheSet(cacheKey, fromYtDlp);
     return fromYtDlp;
@@ -79,7 +97,7 @@ async function scrapeProfile(url, cursor, limit) {
   });
 
   try {
-    await page.goto(`https://www.tiktok.com/@${username}`, {
+    await page.goto(profileUrl, {
       waitUntil: "domcontentloaded",
       timeout: 45000
     });
@@ -207,8 +225,8 @@ async function scrapeVideo(url) {
     title,
     username: username || "unknown",
     thumbnailUrl,
-    downloadUrl: url,
-    noWatermarkUrl: url
+    downloadUrl: "",
+    noWatermarkUrl: ""
   };
   cacheSet(key, video);
   return video;
@@ -233,6 +251,36 @@ async function scrapeVideoWithYtDlp(url) {
   };
 }
 
+function streamYtDlpDownload(req, res) {
+  const parsed = new URL(req.url || "/", `http://127.0.0.1:${port}`);
+  const videoUrl = parsed.searchParams.get("url");
+  const filename = parsed.searchParams.get("filename") || "tiktok-video.mp4";
+  if (!videoUrl || !videoUrl.includes("tiktok.com")) {
+    return send(res, 400, { error: "Valid TikTok video URL required" });
+  }
+
+  res.writeHead(200, {
+    "content-type": "video/mp4",
+    "content-disposition": `attachment; filename="${filename.replace(/[^a-z0-9._-]/gi, "-")}"`,
+    "cache-control": "no-store",
+    "access-control-allow-origin": "*"
+  });
+
+  const child = spawn("yt-dlp", ["--no-playlist", "--no-warnings", "--no-progress", "-f", "bv*+ba/b", "-o", "-", videoUrl], {
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  child.stdout.pipe(res);
+  req.on("close", () => child.kill("SIGTERM"));
+  child.on("error", () => {
+    if (!res.headersSent) send(res, 502, { error: "yt-dlp is not available locally" });
+    else res.end();
+  });
+  child.on("close", () => {
+    if (!res.writableEnded) res.end();
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") return send(res, 204);
@@ -242,10 +290,51 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true, local: true });
     }
 
+    if (req.method === "GET" && path === "/api/download") {
+      return streamYtDlpDownload(req, res);
+    }
+
     if (req.method === "GET" && path === "/api/config") {
       return send(res, 200, {
-        ads: { website_ads_enabled: false, mobile_ads_enabled: false, emergency_disable: true },
-        features: { downloader_enabled: true, profile_downloader_enabled: true, api_base_url: `http://127.0.0.1:${port}/api` },
+        ads: {
+          adsense_enabled: false,
+          adsense_client_id: "",
+          banner_ad_unit: "",
+          in_feed_ad_unit: "",
+          interstitial_ad_unit: "",
+          rewarded_ad_unit: "",
+          native_ad_unit: "",
+          app_open_ad_unit: "",
+          website_ads_enabled: false,
+          mobile_ads_enabled: false,
+          emergency_disable: true,
+          app_open_enabled: false,
+          native_ads_enabled: false,
+          banner_refresh_seconds: 60,
+          interstitial_frequency: 3,
+          rewarded_frequency: 5,
+          native_ad_frequency: 8,
+          interstitial_cooldown_seconds: 90,
+          rewarded_cooldown_seconds: 60
+        },
+        features: {
+          downloader_enabled: true,
+          profile_downloader_enabled: true,
+          maintenance_mode: false,
+          api_base_url: `http://127.0.0.1:${port}/api`,
+          queue_delay_min_ms: 5000,
+          queue_delay_max_ms: 10000,
+          retry_max_attempts: 10,
+          retry_base_delay_ms: 5000,
+          retry_max_delay_ms: 60000,
+          offline_queue_enabled: true,
+          background_downloads_enabled: true,
+          creator_tools_enabled: true,
+          scraping_fallback: "auto",
+          api_endpoints_enabled: true,
+          force_update_min_version: "",
+          latest_version: ""
+        },
         updatedAt: new Date().toISOString()
       });
     }
@@ -267,12 +356,25 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && /^\/api\/download-queue\/[^/]+\/resolve$/.test(path)) {
       const body = await readJson(req);
+      const video = await scrapeVideo(body.url);
       const { videoId, username } = parseTikTokUrl(body.url);
+      const directUrl = video.noWatermarkUrl || video.downloadUrl;
+      if (!isDirectVideoUrl(directUrl)) {
+        const fallbackUrl = `http://127.0.0.1:${port}/api/download?url=${encodeURIComponent(body.url)}&filename=${encodeURIComponent(
+          `${username || "tiktok"}-${videoId || Date.now()}.mp4`
+        )}`;
+        return send(res, 200, {
+          id: video.id || videoId || randomUUID(),
+          filename: `${username || "tiktok"}-${videoId || Date.now()}.mp4`,
+          title: video.title || `${username || "tiktok"} video`,
+          downloadUrl: fallbackUrl
+        });
+      }
       return send(res, 200, {
-        id: videoId || randomUUID(),
+        id: video.id || videoId || randomUUID(),
         filename: `${username || "tiktok"}-${videoId || Date.now()}.mp4`,
-        title: `${username || "tiktok"} video`,
-        downloadUrl: body.url
+        title: video.title || `${username || "tiktok"} video`,
+        downloadUrl: directUrl
       });
     }
 

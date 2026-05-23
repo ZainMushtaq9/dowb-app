@@ -25,6 +25,15 @@ const userAgents = [
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const randomDelay = () =>
   limits.tiktokDelayMinMs + Math.floor(Math.random() * (limits.tiktokDelayMaxMs - limits.tiktokDelayMinMs));
+const inFlight = new Map<string, Promise<unknown>>();
+
+async function dedupe<T>(key: string, work: () => Promise<T>) {
+  const existing = inFlight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const promise = work().finally(() => inFlight.delete(key));
+  inFlight.set(key, promise);
+  return promise;
+}
 
 export function parseTikTokUrl(url: string) {
   const parsed = new URL(url);
@@ -34,6 +43,10 @@ export function parseTikTokUrl(url: string) {
 }
 
 export async function fetchVideoMetadata(url: string): Promise<TikTokVideo> {
+  return dedupe(`video:${url}`, () => fetchVideoMetadataInternal(url));
+}
+
+async function fetchVideoMetadataInternal(url: string): Promise<TikTokVideo> {
   const { videoId, username } = parseTikTokUrl(url);
   const key = cacheKeys.video(videoId || encodeURIComponent(url));
   const cached = await getCached<TikTokVideo>(key);
@@ -72,6 +85,12 @@ export async function fetchVideoMetadata(url: string): Promise<TikTokVideo> {
   };
   await setCached(key, video, env.cacheTtlSeconds);
   await recordMetric({
+    event: "scraper_success",
+    value: 1,
+    unit: "count",
+    route: "tiktok.fetchVideoMetadata"
+  });
+  await recordMetric({
     event: "api_latency",
     value: Math.round(performance.now() - started),
     unit: "ms",
@@ -81,6 +100,10 @@ export async function fetchVideoMetadata(url: string): Promise<TikTokVideo> {
 }
 
 export async function fetchProfileVideos(url: string, cursor?: string, limit: number = limits.profilePageSize) {
+  return dedupe(`profile:${url}:${cursor || "first"}:${limit}`, () => fetchProfileVideosInternal(url, cursor, limit));
+}
+
+async function fetchProfileVideosInternal(url: string, cursor?: string, limit: number = limits.profilePageSize) {
   const { username } = parseTikTokUrl(url);
   if (!username) throw new Error("TikTok profile URL must include @username");
   const cacheKey = `${cacheKeys.profile(username)}:${cursor || "first"}:${limit}`;
@@ -152,6 +175,7 @@ export async function fetchProfileVideos(url: string, cursor?: string, limit: nu
       hasMore: offset + videos.length < profileItems.length && offset + videos.length < env.maxProfileVideos
     };
     await setCached(cacheKey, result, env.cacheTtlSeconds);
+    await recordMetric({ event: "scraper_success", value: 1, unit: "count", route: "tiktok.fetchProfileVideos" });
     return result;
   } finally {
     await browser.close();

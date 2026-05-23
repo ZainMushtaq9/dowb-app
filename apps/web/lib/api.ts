@@ -34,7 +34,10 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
     const error = await response.json().catch(() => null);
     throw new Error(error?.error || `API request failed (${response.status}). Check NEXT_PUBLIC_API_BASE_URL or start the backend.`);
   }
-  return response.json() as Promise<T>;
+  if (response.status === 204) return undefined as T;
+  const text = await response.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text) as T;
 }
 
 export const api = {
@@ -78,6 +81,7 @@ function mockConfig(): PublicRuntimeConfig {
       adsense_enabled: false,
       adsense_client_id: "",
       banner_ad_unit: "",
+      in_feed_ad_unit: "",
       interstitial_ad_unit: "",
       rewarded_ad_unit: "",
       native_ad_unit: "",
@@ -85,6 +89,12 @@ function mockConfig(): PublicRuntimeConfig {
       website_ads_enabled: false,
       mobile_ads_enabled: false,
       emergency_disable: true,
+      app_open_enabled: false,
+      native_ads_enabled: false,
+      banner_refresh_seconds: 60,
+      interstitial_frequency: 3,
+      rewarded_frequency: 5,
+      native_ad_frequency: 8,
       interstitial_cooldown_seconds: 90,
       rewarded_cooldown_seconds: 60
     },
@@ -94,7 +104,14 @@ function mockConfig(): PublicRuntimeConfig {
       maintenance_mode: false,
       queue_delay_min_ms: 5000,
       queue_delay_max_ms: 10000,
+      retry_max_attempts: 10,
+      retry_base_delay_ms: 5000,
+      retry_max_delay_ms: 60000,
+      offline_queue_enabled: true,
+      background_downloads_enabled: true,
+      creator_tools_enabled: true,
       scraping_fallback: "auto",
+      api_endpoints_enabled: true,
       force_update_min_version: "",
       latest_version: ""
     },

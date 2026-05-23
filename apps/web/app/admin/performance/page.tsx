@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AlertTriangle, Clock, DownloadCloud } from "lucide-react";
+import { Activity, AlertTriangle, BadgePercent, Clock, DownloadCloud, Globe2, Megaphone, Smartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -28,7 +28,11 @@ export default function PerformanceDashboard() {
         { label: "API", value: `${data.averageApiMs || 0}ms`, Icon: Activity },
         { label: "Startup", value: `${data.averageStartupMs || 0}ms`, Icon: Clock },
         { label: "Queue", value: `${data.activeQueueSize || 0}`, Icon: DownloadCloud },
-        { label: "Failures", value: `${data.downloadFailures || 0}`, Icon: AlertTriangle }
+        { label: "Failures", value: `${data.downloadFailures || 0}`, Icon: AlertTriangle },
+        { label: "Success", value: `${data.downloadSuccessRate || 0}%`, Icon: BadgePercent },
+        { label: "Scraping", value: `${data.scrapingSuccessRate || 0}%`, Icon: Globe2 },
+        { label: "Retries", value: `${data.retryReports || 0}`, Icon: Smartphone },
+        { label: "Ads", value: `${data.adImpressions || 0}`, Icon: Megaphone }
       ]
     : [];
 

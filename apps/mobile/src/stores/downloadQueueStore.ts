@@ -4,6 +4,7 @@ import * as MediaLibrary from "expo-media-library";
 import { create } from "zustand";
 import { api, VideoItem } from "@/services/api";
 import { deleteCompletedQueueItems, listQueueItems, patchQueueItem, QueueRecord, upsertQueueItem } from "@/services/queueDatabase";
+import { getQueueMeta, patchQueueMeta } from "@/services/queueMetaStorage";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const antiBlockDelay = () => 5000 + Math.floor(Math.random() * 5000);
@@ -25,7 +26,21 @@ interface DownloadQueueState {
 export const useDownloadQueueStore = create<DownloadQueueState>((set, get) => ({
   items: [],
   running: false,
-  hydrate: async () => set({ items: listQueueItems() }),
+  hydrate: async () => {
+    const items = listQueueItems();
+    const meta = getQueueMeta();
+    const recovering = items.some((item) => item.state === "downloading" || item.state === "retrying" || item.state === "network_waiting");
+    for (const item of items) {
+      if (item.state === "downloading" || item.state === "retrying" || item.state === "network_waiting") {
+        patchQueueItem(item.id, { state: "waiting", lastError: "Recovered after app restart" });
+      }
+    }
+    patchQueueMeta({
+      lastRestoreAt: Date.now(),
+      crashRecoveryCount: recovering ? meta.crashRecoveryCount + 1 : meta.crashRecoveryCount
+    });
+    set({ items: listQueueItems() });
+  },
   enqueue: async (videos) => {
     const queue = await api.createDownloadQueue(videos);
     const now = Date.now();
@@ -50,6 +65,7 @@ export const useDownloadQueueStore = create<DownloadQueueState>((set, get) => ({
   process: async () => {
     if (get().running) return;
     set({ running: true });
+    patchQueueMeta({ lastRunAt: Date.now() });
     try {
       for (const item of listQueueItems()) {
         if (!["waiting", "failed", "retrying", "network_waiting"].includes(item.state)) continue;

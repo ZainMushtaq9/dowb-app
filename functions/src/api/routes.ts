@@ -70,6 +70,11 @@ routes.post(
   asyncHandler(async (req, res) => {
     const input = videoRequestSchema.parse(req.body);
     const video = await fetchVideoMetadata(input.url);
+    const downloadUrl = video.noWatermarkUrl || video.downloadUrl;
+    if (!isDirectVideoUrl(downloadUrl)) {
+      res.status(409).json({ error: "Direct MP4 URL is unavailable for this public video. The queue will not open TikTok pages as downloads." });
+      return;
+    }
     const queueId = String(req.params.queueId);
     await db.collection("downloadQueues").doc(queueId).collection("events").add({
       type: "resolved",
@@ -80,11 +85,23 @@ routes.post(
     res.json({
       id: video.id,
       filename: `${video.username}-${video.id}.mp4`,
-      downloadUrl: video.noWatermarkUrl || video.downloadUrl,
+      downloadUrl,
       title: video.title
     });
   })
 );
+
+function isDirectVideoUrl(value?: string) {
+  if (!value) return false;
+  if (value.startsWith("data:video/")) return true;
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.replace(/^www\./, "");
+    return host !== "tiktok.com" && !host.endsWith(".tiktok.com");
+  } catch {
+    return false;
+  }
+}
 
 routes.post(
   "/download-queue/:queueId/events",

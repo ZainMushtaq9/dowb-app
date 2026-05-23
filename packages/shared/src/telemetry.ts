@@ -10,9 +10,15 @@ export type TelemetryEvent =
   | "network_latency"
   | "scroll_performance"
   | "queue_delay"
+  | "queue_retry"
   | "scraper_blocked"
+  | "scraper_success"
   | "download_success"
-  | "download_failure";
+  | "download_failure"
+  | "download_retry"
+  | "queue_overload"
+  | "ad_impression"
+  | "web_error";
 
 export interface MetricPoint {
   event: TelemetryEvent;

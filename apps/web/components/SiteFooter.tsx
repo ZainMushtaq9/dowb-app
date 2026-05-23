@@ -3,10 +3,15 @@ import { AdSlot } from "./AdSlot";
 const tools = [
   ["Video Downloader", "/video-downloader"],
   ["Profile Downloader", "/profile-downloader"],
+  ["No Watermark Downloader", "/download-tiktok-no-watermark"],
+  ["TikTok MP3 Downloader", "/tiktok-mp3-downloader"],
   ["Trending Tools", "/trending"],
+  ["Trending Hashtags", "/trending-tiktok-hashtags"],
+  ["Trending Sounds", "/trending-sounds"],
   ["TikTok Tips", "/blog"],
   ["Hashtag Generator", "/hashtag-generator"],
-  ["Caption Generator", "/caption-generator"]
+  ["Caption Generator", "/caption-generator"],
+  ["Bio Generator", "/bio-generator"]
 ];
 
 const legal = [

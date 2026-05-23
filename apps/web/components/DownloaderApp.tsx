@@ -321,6 +321,9 @@ function QueuePanel({ snapshot, queue }: { snapshot: QueueSnapshot; queue: Brows
           <button onClick={() => queue?.retryFailed()} className="h-10 rounded bg-ink px-3 text-sm text-white dark:bg-paper dark:text-ink">
             Retry Failed
           </button>
+          <button onClick={() => queue?.clear()} className="h-10 rounded border border-black/10 px-3 text-sm dark:border-white/15">
+            Clear
+          </button>
         </div>
       </div>
       <div className="mt-3 max-h-72 overflow-auto rounded border border-black/10 dark:border-white/10">

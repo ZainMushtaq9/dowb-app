@@ -27,6 +27,8 @@ Fields:
   "adsense_enabled": true,
   "adsense_client_id": "ca-pub-xxxxxxxxxxxxxxxx",
   "banner_ad_unit": "1234567890",
+  "in_feed_ad_unit": "0987654321",
+  "banner_refresh_seconds": 60,
   "emergency_disable": false
 }
 ```
@@ -45,6 +47,13 @@ Use the same `adminConfig/ads_config` document:
   "rewarded_ad_unit": "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
   "native_ad_unit": "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
   "app_open_ad_unit": "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
+  "app_open_enabled": true,
+  "native_ads_enabled": true,
+  "interstitial_frequency": 3,
+  "rewarded_frequency": 5,
+  "native_ad_frequency": 8,
+  "interstitial_cooldown_seconds": 90,
+  "rewarded_cooldown_seconds": 60,
   "emergency_disable": false
 }
 ```
@@ -69,7 +78,14 @@ Fields:
   "profile_downloader_enabled": true,
   "maintenance_mode": false,
   "queue_delay_min_ms": 5000,
-  "queue_delay_max_ms": 10000
+  "queue_delay_max_ms": 10000,
+  "retry_max_attempts": 10,
+  "retry_base_delay_ms": 5000,
+  "retry_max_delay_ms": 60000,
+  "offline_queue_enabled": true,
+  "background_downloads_enabled": true,
+  "creator_tools_enabled": true,
+  "api_endpoints_enabled": true
 }
 ```
 

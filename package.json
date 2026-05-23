@@ -6,22 +6,21 @@
   "packageManager": "npm@10.9.2",
   "workspaces": [
     "apps/web",
-    "functions",
     "packages/shared"
   ],
   "scripts": {
     "dev:web": "npm --workspace apps/web run dev",
     "build:web": "npm --workspace apps/web run build",
     "lint:web": "npm --workspace apps/web run lint",
-    "build:functions": "npm --workspace functions run build",
-    "serve:functions": "npm --workspace functions run serve",
-    "test:functions": "npm --workspace functions run test",
+    "build:functions": "npm --prefix functions run build",
+    "serve:functions": "npm --prefix functions run serve",
+    "test:functions": "npm --prefix functions run test",
     "build:shared": "npm --workspace packages/shared run build",
     "vercel-build": "npm run build:shared && npm run build:web",
     "build": "npm run build:shared && npm run build:web && npm run build:functions"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=20"
   },
   "dependencies": {
     "cssesc": "^3.0.0"

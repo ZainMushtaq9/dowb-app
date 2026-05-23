@@ -38,8 +38,8 @@ Build settings:
 
 ```text
 Framework Preset: Next.js
-Build Command: npm run build:shared && npm run build:web
-Output Directory: apps/web/out
+Build Command: npm run vercel-build
+Output Directory: apps/web/.next
 Install Command: npm install --include=dev --no-audit --no-fund
 ```
 
@@ -49,6 +49,8 @@ Environment variables:
 NEXT_PUBLIC_API_BASE_URL=https://us-central1-your-project.cloudfunctions.net/api
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_SITE_URL=https://your-domain.com
+NEXT_PUBLIC_ENABLE_MOCK_API=false
+NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 Vercel can also read the included `vercel.json`, which sets the build command and static asset cache headers.

@@ -39,7 +39,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://us-central1-your-project.cloudfunctions.net/api",
+      "apiBaseUrl": "https://us-central1-zyn-fyp.cloudfunctions.net/api",
       "eas": {
         "projectId": "replace-with-eas-project-id"
       }
